@@ -5,6 +5,7 @@ import CategoryBar from './components/CategoryBar';
 import ProductGrid from './components/ProductGrid';
 import Cart from './components/Cart';
 import Chatbot from './components/Chatbot';
+import Footer from './components/Footer';
 import './styles/global.css';
 
 export default function App() {
@@ -137,6 +138,8 @@ export default function App() {
       )}
 
       <Chatbot products={products} onProductClick={handleProductClick} />
+
+      <Footer />
 
       <style jsx>{`
         @keyframes spin {
