@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Header({ onSearch, cartCount, onCartClick }) {
+export default function Header({ onSearch, cartCount, onCartClick, user, onLoginClick, onLogoutClick }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e) => {
@@ -33,13 +33,20 @@ export default function Header({ onSearch, cartCount, onCartClick }) {
         </form>
 
         <div style={styles.actions}>
-          <button style={styles.actionButton}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span style={styles.actionText}>Login</span>
-          </button>
+          {user ? (
+            <div style={styles.userMenu}>
+              <span style={styles.userName}>{user.user_metadata?.full_name || user.email}</span>
+              <button onClick={onLogoutClick} style={styles.logoutButton}>Logout</button>
+            </div>
+          ) : (
+            <button style={styles.actionButton} onClick={onLoginClick}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <span style={styles.actionText}>Login</span>
+            </button>
+          )}
 
           <button style={styles.actionButton} onClick={onCartClick}>
             <div style={styles.cartIconWrapper}>
@@ -116,6 +123,7 @@ const styles = {
   actions: {
     display: 'flex',
     gap: '24px',
+    alignItems: 'center',
   },
   actionButton: {
     backgroundColor: 'transparent',
@@ -129,6 +137,25 @@ const styles = {
   },
   actionText: {
     fontSize: '14px',
+  },
+  userMenu: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  userName: {
+    fontSize: '13px',
+    color: 'white',
+    fontWeight: 500,
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    color: 'white',
+    padding: '6px 12px',
+    fontSize: '13px',
+    fontWeight: 500,
+    borderRadius: '4px',
+    transition: 'all 0.2s ease',
   },
   cartIconWrapper: {
     position: 'relative',

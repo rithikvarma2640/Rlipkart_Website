@@ -4,7 +4,8 @@ import Header from './components/Header';
 import CategoryBar from './components/CategoryBar';
 import ProductGrid from './components/ProductGrid';
 import Cart from './components/Cart';
-import Chatbot from './components/Chatbot';
+import AdvancedChatbot from './components/AdvancedChatbot';
+import Auth from './components/Auth';
 import Footer from './components/Footer';
 import './styles/global.css';
 
@@ -16,14 +17,35 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
+    checkAuth();
   }, []);
 
   useEffect(() => {
     filterProducts();
   }, [products, selectedCategory, searchQuery]);
+
+  const checkAuth = async () => {
+    const { data } = await supabase.auth.getSession();
+    setUser(data?.session?.user || null);
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   const fetchProducts = async () => {
     try {
@@ -112,6 +134,9 @@ export default function App() {
         onSearch={handleSearch}
         cartCount={cartCount}
         onCartClick={() => setIsCartOpen(true)}
+        user={user}
+        onLoginClick={() => setIsAuthOpen(true)}
+        onLogoutClick={handleLogout}
       />
 
       <CategoryBar
@@ -137,7 +162,14 @@ export default function App() {
         />
       )}
 
-      <Chatbot products={products} onProductClick={handleProductClick} />
+      <AdvancedChatbot products={products} onProductClick={handleProductClick} user={user} />
+
+      {isAuthOpen && (
+        <Auth
+          onClose={() => setIsAuthOpen(false)}
+          onAuthSuccess={(newUser) => setUser(newUser)}
+        />
+      )}
 
       <Footer />
 
@@ -154,6 +186,17 @@ export default function App() {
           }
           to {
             transform: translateX(0);
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
           }
         }
       `}</style>
