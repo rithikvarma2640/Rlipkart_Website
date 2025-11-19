@@ -7,6 +7,7 @@ import Cart from './components/Cart';
 import AdvancedChatbot from './components/AdvancedChatbot';
 import Auth from './components/Auth';
 import Footer from './components/Footer';
+import SocialSidebar from './components/SocialSidebar';
 import './styles/global.css';
 
 export default function App() {
@@ -130,6 +131,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <SocialSidebar />
       <Header
         onSearch={handleSearch}
         cartCount={cartCount}

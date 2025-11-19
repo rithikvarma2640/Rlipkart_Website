@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import OTPVerification from './OTPVerification';
 
 export default function Auth({ onClose, onAuthSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -8,6 +9,87 @@ export default function Auth({ onClose, onAuthSuccess }) {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [useOTP, setUseOTP] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
+
+  const sendLoginNotification = async (userEmail, userName) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-login-notification`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userEmail,
+            userName: userName || 'User',
+            loginTime: new Date().toLocaleString(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Failed to send notification');
+      }
+    } catch (err) {
+      console.error('Error sending notification:', err);
+    }
+  };
+
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to send OTP');
+      }
+
+      setOtpEmail(email);
+      setTempPassword(password);
+      setUseOTP(true);
+    } catch (err) {
+      setError(err.message || 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOTPVerified = async (otp) => {
+    setLoading(true);
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: otpEmail,
+        password: tempPassword,
+      });
+
+      if (signInError) throw signInError;
+
+      if (data.user) {
+        await sendLoginNotification(otpEmail, data.user.user_metadata?.full_name);
+        onAuthSuccess(data.user);
+        onClose();
+      }
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,6 +105,7 @@ export default function Auth({ onClose, onAuthSuccess }) {
 
         if (signInError) throw signInError;
         if (data.user) {
+          await sendLoginNotification(email, data.user.user_metadata?.full_name);
           onAuthSuccess(data.user);
           onClose();
         }
@@ -52,6 +135,26 @@ export default function Auth({ onClose, onAuthSuccess }) {
     }
   };
 
+  if (useOTP) {
+    return (
+      <div style={styles.overlay} onClick={() => setUseOTP(false)}>
+        <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <button onClick={() => setUseOTP(false)} style={styles.closeBtn}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          <OTPVerification
+            email={otpEmail}
+            onVerified={handleOTPVerified}
+            onBack={() => setUseOTP(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -64,7 +167,7 @@ export default function Auth({ onClose, onAuthSuccess }) {
 
         <h2 style={styles.title}>{isLogin ? 'Login' : 'Create Account'}</h2>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={isLogin ? handleSendOTP : handleSubmit} style={styles.form}>
           {!isLogin && (
             <input
               type="text"
@@ -97,9 +200,26 @@ export default function Auth({ onClose, onAuthSuccess }) {
           {error && <p style={styles.error}>{error}</p>}
 
           <button type="submit" disabled={loading} style={styles.submitBtn}>
-            {loading ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
+            {loading ? 'Please wait...' : isLogin ? 'Login with OTP' : 'Sign Up'}
           </button>
         </form>
+
+        {isLogin && (
+          <>
+            <div style={styles.divider}>
+              <span>or</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              style={styles.altLoginBtn}
+              disabled={loading}
+            >
+              Login without OTP
+            </button>
+          </>
+        )}
 
         <div style={styles.divider}>
           <span>or</span>
@@ -185,6 +305,14 @@ const styles = {
     fontSize: '15px',
     fontWeight: 600,
     marginTop: '8px',
+  },
+  altLoginBtn: {
+    backgroundColor: 'var(--primary-orange)',
+    color: 'white',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    fontSize: '15px',
+    fontWeight: 600,
   },
   divider: {
     margin: '24px 0',
